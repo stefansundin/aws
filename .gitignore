@@ -1,0 +1,8 @@
+Thumbs.db
+*.DS_Store
+*.swp
+*.ucf-dist
+.~lock.*
+
+s3-versioned-bytes
+lookup-sir
