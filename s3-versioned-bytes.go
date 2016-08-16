@@ -19,10 +19,30 @@ func main() {
 	}
 	bucket := os.Args[1]
 
+	sess := session.New()
+	client := s3.New(sess)
+
+	fmt.Printf("Getting bucket region... ")
+	getBucketLocationResp, err2 := client.GetBucketLocation(&s3.GetBucketLocationInput{
+		Bucket: &bucket,
+	})
+	if err2 != nil {
+		fmt.Println(err2.Error())
+		return
+	}
+	var region string
+	if getBucketLocationResp.LocationConstraint == nil {
+		region = "us-east-1"
+	} else {
+		region = *getBucketLocationResp.LocationConstraint
+	}
+	fmt.Printf("%s\n", region)
+	cfg := aws.NewConfig().WithRegion(region)
+
 	fmt.Println("Getting CloudWatch metric to estimate number of objects...")
 	now := time.Now()
 	oneDayAgo := time.Unix(now.Unix()-(60*60*24), 0)
-	cwClient := cloudwatch.New(session.New())
+	cwClient := cloudwatch.New(sess, cfg)
 	resp, err := cwClient.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
 		Namespace:  aws.String("AWS/S3"),
 		MetricName: aws.String("NumberOfObjects"),
@@ -49,13 +69,13 @@ func main() {
 		return
 	}
 	datapoint := resp.Datapoints[len(resp.Datapoints)-1]
-	fmt.Printf("Number of objects: %v (measured %s on %s)\n", *datapoint.Sum, humanize.Time(*datapoint.Timestamp), *datapoint.Timestamp)
+	fmt.Printf("Number of objects: %d (measured %s on %s)\n", int64(*datapoint.Sum), humanize.Time(*datapoint.Timestamp), *datapoint.Timestamp)
 
 	// list the bucket
 	pageNum := 0
 	numVersions := 0
 	var oldBytes int64
-	s3Client := s3.New(session.New())
+	s3Client := s3.New(sess, cfg)
 	// fmt.Println("Deleted objects:")
 	err = s3Client.ListObjectVersionsPages(&s3.ListObjectVersionsInput{
 		Bucket: aws.String(bucket),
@@ -63,7 +83,7 @@ func main() {
 		func(page *s3.ListObjectVersionsOutput, lastPage bool) bool {
 			pageNum++
 			numVersions += len(page.Versions)
-			fmt.Printf("\rListing bucket page %d (%d objects)... ", pageNum, numVersions)
+			fmt.Printf("\rListing bucket page %d (%d objects)... %s in previous versions so far.", pageNum, numVersions, humanize.Bytes(uint64(oldBytes)))
 
 			// TODO: Split out bytes based on storage type as they have different costs!
 			for _, obj := range page.Versions {
