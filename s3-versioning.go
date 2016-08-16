@@ -46,12 +46,14 @@ func main() {
 			fmt.Println(err2.Error())
 			return
 		}
-		var svc *s3.S3
+		var region string
 		if getBucketLocationResp.LocationConstraint == nil {
-			svc = client
+			region = "us-east-1"
 		} else {
-			svc = s3.New(sess, aws.NewConfig().WithRegion(*getBucketLocationResp.LocationConstraint))
+			region = *getBucketLocationResp.LocationConstraint
 		}
+		cfg := aws.NewConfig().WithRegion(region)
+		svc := s3.New(sess, cfg)
 
 		getBucketVersioningResp, err2 := svc.GetBucketVersioning(&s3.GetBucketVersioningInput{
 			Bucket: bucket.Name,
