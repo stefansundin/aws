@@ -1,3 +1,8 @@
+Get key identity:
+```shell
+AWS_ACCESS_KEY_ID=AKIA.. AWS_SECRET_ACCESS_KEY=... aws sts get-caller-identity
+```
+
 List all TCP ELBs:
 ```shell
 aws elb describe-load-balancers | jq '.LoadBalancerDescriptions | map(select(any(.ListenerDescriptions[]; .Listener.Protocol == "TCP"))) | map(.LoadBalancerName)'
