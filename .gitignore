@@ -6,6 +6,6 @@ Thumbs.db
 
 s3-versioned-bytes
 lookup-sir
-tail-log-stream
+tail-log-group
 sum-unused-ebs
 s3-versioning
