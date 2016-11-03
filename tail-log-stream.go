@@ -45,7 +45,11 @@ func main() {
 					}
 				}
 				for _, event := range page.Events {
-					fmt.Printf(*event.Message)
+					s := *event.Message
+					fmt.Printf(s)
+					if s[len(s)-1] != '\n' {
+						fmt.Println()
+					}
 				}
 				return true
 			})
