@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-# This script let's you assume a role in the AWS console with a session duration
+# This script lets you assume a role in the AWS console with a session duration
 # that is longer than one hour (max 12 hours).
+# It is convenient to call this script from a script or bash function, e.g.:
+# alias aws-admin="federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
 # Install prerequisites:
 # pip install requests boto
@@ -11,15 +13,20 @@
 # https://aws.amazon.com/blogs/security/enable-your-federated-users-to-work-in-the-aws-management-console-for-up-to-12-hours/
 # http://boto.cloudhackers.com/en/latest/ref/sts.html
 
-import urllib, json, requests
+import sys, urllib, json, requests
 from boto.sts import STSConnection
+
+if len(sys.argv) < 3:
+    print("Insufficient arguments.")
+    print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
+    sys.exit(1)
 
 # Call AssumeRole to get temporary access keys for the federated user
 sts_connection = STSConnection()
 assumed_role_object = sts_connection.assume_role(
     role_session_name="federate.py",
-    role_arn="arn:aws:iam::123456789012:role/AdministratorRole",
-    mfa_serial_number="arn:aws:iam::123456789012:mfa/user.name",
+    role_arn=sys.argv[1],
+    mfa_serial_number=sys.argv[2],
     mfa_token=raw_input("Enter MFA code: ")
 )
 
