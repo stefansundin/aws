@@ -6,7 +6,30 @@ Handy awscli aliases:
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
 
-# Python 3 setup
+# Usage
+
+Example commands:
+
+```bash
+aws federate admin
+aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3://myrandombucket/assets/img/logo.png
+aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... # => s3://myrandombucket/logs/build.log
+aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
+aws cf-validate webservers.yml
+aws cf-diff prod-webservers webservers.yml
+AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
+AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
+aws cf-dump prod-webservers
+```
+
+Example federate bash aliases:
+
+```bash
+alias aws-admin="aws federate admin"
+alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
+```
+
+# Setup
 
 Install Python pre-requisites.
 
@@ -67,25 +90,4 @@ cf-dump =
     DIR=~/src/aws/cli
     "$DIR/cf-dump.sh" $*
   }; f
-```
-
-Example commands:
-
-```bash
-aws federate admin
-aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3://myrandombucket/assets/img/logo.png
-aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... # => s3://myrandombucket/logs/build.log
-aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
-aws cf-validate webservers.yml
-aws cf-diff prod-webservers webservers.yml
-AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
-AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
-aws cf-dump prod-webservers
-```
-
-Example federate bash aliases:
-
-```bash
-alias aws-admin="aws federate admin"
-alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 ```
