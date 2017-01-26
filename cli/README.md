@@ -1,5 +1,7 @@
 Handy awscli aliases:
-- CloudFormation tools to validate and diff templates against running stacks.
+- cf-validate: Validate a CloudFormation template.
+- cf-diff: Diff a stack against a template file.
+- cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
 
 # Python 3 setup
 
@@ -16,6 +18,8 @@ Add awscli alias. `cat ~/.aws/cli/alias`
 ```
 [toplevel]
 
+whoami = sts get-caller-identity
+
 cf-validate =
   !f() {
     DIR=~/src/aws/cli
@@ -29,6 +33,12 @@ cf-diff =
     source "$DIR/venv/bin/activate"
     "$DIR/cf-diff.py" $*
   }; f
+
+cf-dump =
+  !f() {
+    DIR=~/stuff/aws/cli
+    "$DIR/cf-dump.sh" $*
+  }; f
 ```
 
 Example commands:
@@ -38,4 +48,5 @@ aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
 AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
+aws cf-dump prod-webservers
 ```
