@@ -4,6 +4,7 @@ Thumbs.db
 *.ucf-dist
 .~lock.*
 
+cli/venv
 s3-versioned-bytes
 lookup-sir
 tail-log-group
