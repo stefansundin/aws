@@ -52,6 +52,7 @@ cf-dump =
 Example commands:
 
 ```bash
+aws federate admin
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
@@ -59,8 +60,9 @@ AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
 aws cf-dump prod-webservers
 ```
 
-Example federate bash alias:
+Example federate bash aliases:
 
 ```bash
+alias aws-admin="aws federate admin"
 alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 ```

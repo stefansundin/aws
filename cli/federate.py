@@ -5,6 +5,7 @@
 # that is longer than one hour (max 12 hours).
 
 # Example bash aliases:
+# alias aws-admin="aws federate admin"
 # alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 # alias aws-admin="~/src/aws/cli/federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
@@ -16,20 +17,30 @@
 import sys, urllib, json, requests
 from boto.sts import STSConnection
 
-if len(sys.argv) < 3:
+if len(sys.argv) == 2:
+    import os, ConfigParser
+    config = ConfigParser.ConfigParser()
+    config.read([os.environ["HOME"]+"/.aws/credentials"])
+    role_arn = config.get(sys.argv[1], "role_arn")
+    mfa_serial = config.get(sys.argv[1], "mfa_serial")
+elif len(sys.argv) == 3:
+    role_arn = sys.argv[1]
+    mfa_serial = sys.argv[2]
+elif len(sys.argv) < 3:
     print("Insufficient arguments.")
+    print("Usage: %s <profile>" % sys.argv[0])
     print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
     sys.exit(1)
 
 # This is what will show up as the username in the ConsoleLogin event in CloudTrail
-session_name = sys.argv[2].split("/")[-1]
+session_name = mfa_serial.split("/")[-1]
 
 # Call AssumeRole to get temporary access keys for the federated user
 sts_connection = STSConnection()
 assumed_role_object = sts_connection.assume_role(
     role_session_name=session_name,
-    role_arn=sys.argv[1],
-    mfa_serial_number=sys.argv[2],
+    role_arn=role_arn,
+    mfa_serial_number=mfa_serial,
     mfa_token=raw_input("Enter MFA code: ")
 )
 
