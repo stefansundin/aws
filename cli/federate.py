@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-# https://github.com/stefansundin/aws/blob/master/federate.py
+# https://github.com/stefansundin/aws/blob/master/cli/federate.py
 
 # This script lets you assume a role in the AWS console with a session duration
 # that is longer than one hour (max 12 hours).
-# It is convenient to call this script from a script or bash function, e.g.:
-# alias aws-admin="federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
-# Install prerequisites:
-# pip install requests boto
+# Example bash aliases:
+# alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
+# alias aws-admin="~/src/aws/cli/federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
 # Docs:
 # http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
@@ -51,7 +50,7 @@ data = r.json()
 # This URL must be used within 15 minutes
 url = "https://signin.aws.amazon.com/federation"
 url += "?Action=login"
-url += "&Issuer=https://github.com/stefansundin/aws/blob/master/federate.py"
+url += "&Issuer=https://github.com/stefansundin/aws/blob/master/cli/federate.py"
 url += "&Destination=" + urllib.quote_plus("https://console.aws.amazon.com/")
 url += "&SigninToken=" + data["SigninToken"]
 

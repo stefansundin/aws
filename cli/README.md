@@ -1,4 +1,5 @@
 Handy awscli aliases:
+- federate: Assume a role and create a sign-in link to the AWS console.
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
@@ -20,6 +21,13 @@ Add awscli alias. `cat ~/.aws/cli/alias`
 
 whoami = sts get-caller-identity
 
+federate =
+  !f() {
+    DIR=~/src/aws/cli
+    source "$DIR/venv/bin/activate"
+    "$DIR/federate.py" $*
+  }; f
+
 cf-validate =
   !f() {
     DIR=~/src/aws/cli
@@ -36,7 +44,7 @@ cf-diff =
 
 cf-dump =
   !f() {
-    DIR=~/stuff/aws/cli
+    DIR=~/src/aws/cli
     "$DIR/cf-dump.sh" $*
   }; f
 ```
@@ -49,4 +57,10 @@ aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
 AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
 aws cf-dump prod-webservers
+```
+
+Example federate bash alias:
+
+```bash
+alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 ```
