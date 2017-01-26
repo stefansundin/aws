@@ -1,5 +1,6 @@
 Handy awscli aliases:
 - federate: Assume a role and create a sign-in link to the AWS console.
+- s3-cat: Output the contents of a file on S3.
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
@@ -28,6 +29,14 @@ federate =
     "$DIR/federate.py" $*
   }; f
 
+s3-cat =
+  !f() {
+    FILE=$(mktemp)
+    aws s3 cp "$1" "$FILE"
+    cat "$FILE"
+    rm "$FILE"
+  }; f
+
 cf-validate =
   !f() {
     DIR=~/src/aws/cli
@@ -53,6 +62,7 @@ Example commands:
 
 ```bash
 aws federate admin
+aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
