@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# https://github.com/stefansundin/aws/blob/master/federate.py
 
 # This script lets you assume a role in the AWS console with a session duration
 # that is longer than one hour (max 12 hours).
@@ -21,10 +22,13 @@ if len(sys.argv) < 3:
     print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
     sys.exit(1)
 
+# This is what will show up as the username in the ConsoleLogin event in CloudTrail
+session_name = sys.argv[2].split("/")[-1]
+
 # Call AssumeRole to get temporary access keys for the federated user
 sts_connection = STSConnection()
 assumed_role_object = sts_connection.assume_role(
-    role_session_name="federate.py",
+    role_session_name=session_name,
     role_arn=sys.argv[1],
     mfa_serial_number=sys.argv[2],
     mfa_token=raw_input("Enter MFA code: ")
@@ -47,7 +51,7 @@ data = r.json()
 # This URL must be used within 15 minutes
 url = "https://signin.aws.amazon.com/federation"
 url += "?Action=login"
-url += "&Issuer=federate.py"
+url += "&Issuer=https://github.com/stefansundin/aws/blob/master/federate.py"
 url += "&Destination=" + urllib.quote_plus("https://console.aws.amazon.com/")
 url += "&SigninToken=" + data["SigninToken"]
 
