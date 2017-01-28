@@ -6,12 +6,16 @@ from clint.textui import colored
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--region", help="AWS region")
+    parser.add_argument("-p", "--profile", help="Profile")
     parser.add_argument("stack", help="the CloudFormation stack to compare")
     parser.add_argument("file", help="the local file to compare")
     args = parser.parse_args()
 
     if args.region:
         boto3.setup_default_session(region_name=args.region)
+
+    if args.profile:
+        boto3.setup_default_session(profile_name=args.profile)
 
     # get remote template
     try:
