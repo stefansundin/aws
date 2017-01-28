@@ -75,7 +75,7 @@ cf-validate =
   !f() {
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
-    "$DIR/cf-validate.py" $*
+    "$DIR/cf-validate.py" ${*:-*.yml}
   }; f
 
 cf-diff =
