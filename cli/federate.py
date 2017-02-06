@@ -17,12 +17,17 @@
 import sys, urllib, json, requests
 from boto.sts import STSConnection
 
+dest = "https://console.aws.amazon.com/console/home"
+
 if len(sys.argv) == 2:
-    import os, ConfigParser
-    config = ConfigParser.ConfigParser()
+    import os, configparser
+    config = configparser.ConfigParser()
     config.read([os.environ["HOME"]+"/.aws/credentials"])
     role_arn = config.get(sys.argv[1], "role_arn")
     mfa_serial = config.get(sys.argv[1], "mfa_serial")
+    region = config.get(sys.argv[1], "region", fallback=None)
+    if region:
+        dest += "?region=" + region
 elif len(sys.argv) == 3:
     role_arn = sys.argv[1]
     mfa_serial = sys.argv[2]
@@ -62,7 +67,7 @@ data = r.json()
 url = "https://signin.aws.amazon.com/federation"
 url += "?Action=login"
 url += "&Issuer=https://github.com/stefansundin/aws/blob/master/cli/federate.py"
-url += "&Destination=" + urllib.quote_plus("https://console.aws.amazon.com/")
+url += "&Destination=" + urllib.quote_plus(dest)
 url += "&SigninToken=" + data["SigninToken"]
 
 # Print URL
