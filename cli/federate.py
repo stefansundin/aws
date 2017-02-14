@@ -6,6 +6,7 @@
 
 # Example bash aliases:
 # alias aws-admin="aws federate admin"
+# alias aws-admin="aws federate arn:aws:iam::123456789012:role/ReadOnlyRole"
 # alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 # alias aws-admin="~/src/aws/cli/federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
@@ -14,26 +15,31 @@
 # https://aws.amazon.com/blogs/security/enable-your-federated-users-to-work-in-the-aws-management-console-for-up-to-12-hours/
 # http://boto.cloudhackers.com/en/latest/ref/sts.html
 
-import sys, urllib, json, requests
+import sys, os, urllib, json, requests
 from boto.sts import STSConnection
 
 dest = "https://console.aws.amazon.com/console/home"
 
 if len(sys.argv) == 2:
-    import os, configparser
-    config = configparser.ConfigParser()
-    config.read([os.environ["HOME"]+"/.aws/credentials"])
-    role_arn = config.get(sys.argv[1], "role_arn")
-    mfa_serial = config.get(sys.argv[1], "mfa_serial", fallback=None)
-    region = config.get(sys.argv[1], "region", fallback=None)
-    if region:
-        dest += "?region=" + region
+    if sys.argv[1].startswith("arn:aws:iam:"):
+        role_arn = sys.argv[1]
+        mfa_serial = None
+    else:
+        import configparser
+        config = configparser.ConfigParser()
+        config.read([os.environ["HOME"]+"/.aws/credentials"])
+        role_arn = config.get(sys.argv[1], "role_arn")
+        mfa_serial = config.get(sys.argv[1], "mfa_serial", fallback=None)
+        region = config.get(sys.argv[1], "region", fallback=None)
+        if region:
+            dest += "?region=" + region
 elif len(sys.argv) == 3:
     role_arn = sys.argv[1]
     mfa_serial = sys.argv[2]
 elif len(sys.argv) < 3:
     print("Insufficient arguments.")
     print("Usage: %s <profile>" % sys.argv[0])
+    print("Usage: %s <role_arn>" % sys.argv[0])
     print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
     sys.exit(1)
 
