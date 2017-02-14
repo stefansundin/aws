@@ -24,7 +24,7 @@ if len(sys.argv) == 2:
     config = configparser.ConfigParser()
     config.read([os.environ["HOME"]+"/.aws/credentials"])
     role_arn = config.get(sys.argv[1], "role_arn")
-    mfa_serial = config.get(sys.argv[1], "mfa_serial")
+    mfa_serial = config.get(sys.argv[1], "mfa_serial", fallback=None)
     region = config.get(sys.argv[1], "region", fallback=None)
     if region:
         dest += "?region=" + region
@@ -38,16 +38,23 @@ elif len(sys.argv) < 3:
     sys.exit(1)
 
 # This is what will show up as the username in the ConsoleLogin event in CloudTrail
-session_name = mfa_serial.split("/")[-1]
+if mfa_serial:
+    session_name = mfa_serial.split("/")[-1]
+else:
+    session_name = os.environ["USER"]
+
+kwargs = {
+    "role_session_name": session_name,
+    "role_arn": role_arn,
+}
+
+if mfa_serial:
+    kwargs["mfa_serial_number"] = mfa_serial
+    kwargs["mfa_token"] = raw_input("Enter MFA code: ")
 
 # Call AssumeRole to get temporary access keys for the federated user
 sts_connection = STSConnection()
-assumed_role_object = sts_connection.assume_role(
-    role_session_name=session_name,
-    role_arn=role_arn,
-    mfa_serial_number=mfa_serial,
-    mfa_token=raw_input("Enter MFA code: ")
-)
+assumed_role_object = sts_connection.assume_role(**kwargs)
 
 # Make request to AWS federation endpoint to get sign-in token
 r = requests.get("https://signin.aws.amazon.com/federation", params={
