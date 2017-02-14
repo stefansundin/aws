@@ -20,14 +20,17 @@ from boto.sts import STSConnection
 
 dest = "https://console.aws.amazon.com/console/home"
 
+source_profile = None
+mfa_serial = None
+
 if len(sys.argv) == 2:
     if sys.argv[1].startswith("arn:aws:iam:"):
         role_arn = sys.argv[1]
-        mfa_serial = None
     else:
         import configparser
         config = configparser.ConfigParser()
         config.read([os.environ["HOME"]+"/.aws/credentials"])
+        source_profile = config.get(sys.argv[1], "source_profile")
         role_arn = config.get(sys.argv[1], "role_arn")
         mfa_serial = config.get(sys.argv[1], "mfa_serial", fallback=None)
         region = config.get(sys.argv[1], "region", fallback=None)
@@ -59,7 +62,10 @@ if mfa_serial:
     kwargs["mfa_token"] = raw_input("Enter MFA code: ")
 
 # Call AssumeRole to get temporary access keys for the federated user
-sts_connection = STSConnection()
+if source_profile:
+    sts_connection = STSConnection(profile_name=source_profile)
+else:
+    sts_connection = STSConnection()
 assumed_role_object = sts_connection.assume_role(**kwargs)
 
 # Make request to AWS federation endpoint to get sign-in token
