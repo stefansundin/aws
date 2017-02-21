@@ -5,6 +5,8 @@ Handy awscli aliases:
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
+- cf-watch: Watch a stack update in real-time.
+- logs-ls: List all CloudWatch log groups.
 
 # Usage
 
@@ -20,6 +22,8 @@ aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
 AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
 aws cf-dump prod-webservers
+aws cf-watch prod-webservers
+aws logs-ls
 ```
 
 Example federate bash aliases:
@@ -50,7 +54,7 @@ federate =
   !f() {
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
-    "$DIR/federate.py" $*
+    "$DIR/federate.py" "$@"
   }; f
 
 s3-url =
@@ -75,19 +79,30 @@ cf-validate =
   !f() {
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
-    "$DIR/cf-validate.py" ${*:-*.yml}
+    "$DIR/cf-validate.py" ${@:-*.yml}
   }; f
 
 cf-diff =
   !f() {
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
-    "$DIR/cf-diff.py" $*
+    "$DIR/cf-diff.py" "$@"
   }; f
 
 cf-dump =
   !f() {
     DIR=~/src/aws/cli
-    "$DIR/cf-dump.sh" $*
+    "$DIR/cf-dump.sh" "$@"
   }; f
+
+cf-watch =
+  !f() {
+    watch -n1 "aws cloudformation describe-stack-events --stack-name $1 --region ${2:-us-east-1} --profile ${3:-default} --max-items 12 --query 'StackEvents[*].[Timestamp, ResourceStatus, LogicalResourceId, ResourceStatusReason]' --output text | column -t -s $'\t'"
+  }; f
+
+logs-ls =
+  !f() {
+    aws logs describe-log-groups --query 'logGroups[*].logGroupName' | jq -r '.[]'
+  }; f
+
 ```
