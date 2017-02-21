@@ -4,3 +4,4 @@ go build lookup-sir.go
 go build tail-log-group.go
 go build sum-unused-ebs.go
 go build s3-versioning.go
+go build search-log-group.go

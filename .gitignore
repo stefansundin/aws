@@ -10,3 +10,4 @@ lookup-sir
 tail-log-group
 sum-unused-ebs
 s3-versioning
+search-log-group
