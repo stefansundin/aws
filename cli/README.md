@@ -97,7 +97,7 @@ cf-dump =
 
 cf-watch =
   !f() {
-    watch -n1 "aws cloudformation describe-stack-events --stack-name $1 --region ${2:-us-east-1} --profile ${3:-default} --max-items 12 --query 'StackEvents[*].[Timestamp, ResourceStatus, LogicalResourceId, ResourceStatusReason]' --output text | column -t -s $'\t'"
+    watch -d -n1 "~/stuff/aws/cli/cf-watch.sh \"$@\""
   }; f
 
 logs-ls =
