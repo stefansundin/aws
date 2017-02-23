@@ -43,12 +43,13 @@ python3 -m virtualenv venv -p python3
 (source venv/bin/activate && pip3 install --upgrade -r requirements.txt)
 ```
 
-Add awscli alias. `cat ~/.aws/cli/alias`
+Add awscli aliases. `cat ~/.aws/cli/alias`
 
 ```
 [toplevel]
 
 whoami = sts get-caller-identity
+version = --version
 
 federate =
   !f() {
