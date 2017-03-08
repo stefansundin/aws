@@ -8,6 +8,7 @@ Handy awscli aliases:
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
 - cf-watch: Watch a stack update in real-time.
 - logs-ls: List all CloudWatch log groups.
+- kms-decrypt: Easily decrypt some base64-encoded ciphertext.
 
 # Usage
 
@@ -26,6 +27,7 @@ AWS_PROFILE=test aws cf-diff stage-webservers webservers.yml
 aws cf-dump prod-webservers
 aws cf-watch prod-webservers
 aws logs-ls
+aws kms-decrypt YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=
 ```
 
 Example federate bash aliases:
@@ -116,6 +118,13 @@ cf-watch =
 logs-ls =
   !f() {
     aws logs describe-log-groups --query 'logGroups[*].logGroupName' | jq -r '.[]'
+  }; f
+
+kms-decrypt =
+  !f() {
+    export AWS_PROFILE="${AWS_PROFILE:-admin}"
+    bash -c 'aws kms decrypt --ciphertext-blob fileb://<(echo "$@" | base64 -D) --query Plaintext --output text | base64 -D' dummy "$@"
+    echo
   }; f
 
 ```
