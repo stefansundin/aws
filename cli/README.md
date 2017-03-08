@@ -2,6 +2,7 @@ Handy awscli aliases:
 - federate: Assume a role and create a sign-in link to the AWS console.
 - s3-url: Translate http urls to S3 into s3:// urls.
 - s3-cat: Output the contents of a file on S3.
+- s3-sign: Easily sign a GET request.
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
@@ -17,6 +18,7 @@ aws federate admin
 aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3://myrandombucket/assets/img/logo.png
 aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... # => s3://myrandombucket/logs/build.log
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
+aws s3-sign myrandombucket/logs/build.log
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
@@ -74,6 +76,16 @@ s3-cat =
     aws s3 cp "$URL" "$FILE"
     cat "$FILE"
     rm "$FILE"
+  }; f
+
+s3-sign =
+  !f() {
+    DAY=$(date -v+2d +%s)
+    EXPIRES=${2:-$DAY}
+    SIG=$(printf "GET\n\n\n$EXPIRES\n/$1" | \
+          openssl dgst -sha1 -binary -hmac "$(aws configure get aws_secret_access_key)" | \
+          openssl base64 | perl -MURI::Escape -ne 'chomp;print uri_escape($_),"\n"')
+    echo "https://s3.amazonaws.com/$1?AWSAccessKeyId=$(aws configure get aws_access_key_id)&Expires=$EXPIRES&Signature=$SIG"
   }; f
 
 cf-validate =
