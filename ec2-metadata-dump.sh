@@ -1,4 +1,5 @@
 #!/bin/bash -e
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
 # curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e
 # Also print user-data:
 # curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e -s user-data
