@@ -1,5 +1,7 @@
 #!/bin/bash -e
-# curl -fL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e
+# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e
+# Also print user-data:
+# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e -s user-data
 
 function get {
   curl -s http://169.254.169.254/2016-09-02/$1
@@ -43,5 +45,12 @@ echo "iam info: $IAM_INFO"
 echo "iam credentials: $IAM_CREDENTIALS"
 echo
 echo "instance-identity: $INSTANCE_IDENTITY"
+
+if [ $# -gt 0 ]; then echo; fi
+for k in "$@"; do
+  echo -n "$k: "
+  get "$k"
+done
+
 echo
 echo "https://${AZ::-1}.console.aws.amazon.com/ec2/v2/home?region=${AZ::-1}#Instances:instanceId=$INSTANCE_ID;sort=instanceId"
