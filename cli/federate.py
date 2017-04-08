@@ -30,6 +30,9 @@ if len(sys.argv) == 2:
         import configparser
         config = configparser.ConfigParser()
         config.read([os.environ["HOME"]+"/.aws/credentials"])
+        if not config.has_option(sys.argv[1], "source_profile"):
+            print("Profile "+sys.argv[1]+" not found in ~/.aws/credentials.")
+            sys.exit(1)
         source_profile = config.get(sys.argv[1], "source_profile")
         role_arn = config.get(sys.argv[1], "role_arn")
         mfa_serial = config.get(sys.argv[1], "mfa_serial", fallback=None)
@@ -39,7 +42,7 @@ if len(sys.argv) == 2:
 elif len(sys.argv) == 3:
     role_arn = sys.argv[1]
     mfa_serial = sys.argv[2]
-elif len(sys.argv) < 3:
+else:
     print("Insufficient arguments.")
     print("Usage: %s <profile>" % sys.argv[0])
     print("Usage: %s <role_arn>" % sys.argv[0])

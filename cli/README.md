@@ -1,5 +1,6 @@
 Handy awscli aliases:
-- federate: Assume a role and create a sign-in link to the AWS console.
+- federate: Sign-in to the AWS console with a role.
+- assume-role: Assume a role by setting the environment variables.
 - s3-url: Translate http urls to S3 into s3:// urls.
 - s3-cat: Output the contents of a file on S3.
 - s3-sign: Easily sign a GET request.
@@ -16,6 +17,7 @@ Example commands:
 
 ```bash
 aws federate admin
+aws assume-role admin
 aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3://myrandombucket/assets/img/logo.png
 aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... # => s3://myrandombucket/logs/build.log
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
@@ -43,8 +45,9 @@ Install Python pre-requisites.
 
 ```bash
 brew install python3
+pip3 install -U virtualenv
 python3 -m virtualenv venv -p python3
-(source venv/bin/activate && pip3 install --upgrade -r requirements.txt)
+(source venv/bin/activate && pip3 install -U -r requirements.txt)
 ```
 
 Add awscli aliases. `cat ~/.aws/cli/alias`
@@ -60,6 +63,13 @@ federate =
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
     "$DIR/federate.py" "$@"
+  }; f
+
+assume-role =
+  !f() {
+    DIR=~/src/aws/cli
+    source "$DIR/venv/bin/activate"
+    "$DIR/assume-role.py" "$@"
   }; f
 
 s3-url =
