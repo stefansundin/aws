@@ -4,6 +4,7 @@ Handy awscli aliases:
 - s3-url: Translate http urls to S3 into s3:// urls.
 - s3-cat: Output the contents of a file on S3.
 - s3-sign: Easily sign a GET request.
+- ec2-migrate-instance: Stop and start an instance to migrate it to new hardware. If the instance is in an autoscaling group, you should first suspend the HealthCheck process (do not forget to remove it again!).
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
@@ -22,6 +23,7 @@ aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3:/
 aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... # => s3://myrandombucket/logs/build.log
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
 aws s3-sign myrandombucket/logs/build.log
+aws ec2-migrate-instance i-01234567890abcdef
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
@@ -98,6 +100,22 @@ s3-sign =
           openssl dgst -sha1 -binary -hmac "$(aws configure get aws_secret_access_key)" | \
           openssl base64 | perl -MURI::Escape -ne 'chomp;print uri_escape($_),"\n"')
     echo "https://s3.amazonaws.com/$1?AWSAccessKeyId=$(aws configure get aws_access_key_id)&Expires=$EXPIRES&Signature=$SIG"
+  }; f
+
+ec2-migrate-instance =
+  !f() {
+    if [ $# -gt 1 ]; then
+      echo "Region: $2"
+      export AWS_DEFAULT_REGION=$2
+    fi
+    echo "Stopping $1..."
+    aws ec2 stop-instances --output text --instance-ids $1 || return
+    while [ $(aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids $1) != "stopped" ]; do
+      echo "Waiting for $1 to reach state 'stopped'..."
+      sleep 1
+    done
+    echo "Starting $1..."
+    aws ec2 start-instances --output text --instance-ids $1
   }; f
 
 cf-validate =
