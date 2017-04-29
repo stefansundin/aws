@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,35 +20,38 @@ func main() {
 	}
 	bucket := os.Args[1]
 
-	sess := session.New()
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Config:            aws.Config{Region: aws.String("us-east-1")},
+	}))
 	client := s3.New(sess)
 
 	fmt.Printf("Getting bucket region... ")
-	getBucketLocationResp, err2 := client.GetBucketLocation(&s3.GetBucketLocationInput{
-		Bucket: &bucket,
-	})
+	ctx := aws.BackgroundContext()
+	getBucketLocationResp, err2 := client.GetBucketLocationWithContext(ctx,
+		&s3.GetBucketLocationInput{
+			Bucket: &bucket,
+		},
+		s3.WithNormalizeBucketLocation,
+	)
 	if err2 != nil {
+		fmt.Println()
 		fmt.Println(err2.Error())
 		return
 	}
-	var region string
-	if getBucketLocationResp.LocationConstraint == nil {
-		region = "us-east-1"
-	} else {
-		region = *getBucketLocationResp.LocationConstraint
-	}
+	region := *getBucketLocationResp.LocationConstraint
 	fmt.Printf("%s\n", region)
 	cfg := aws.NewConfig().WithRegion(region)
 
 	fmt.Println("Getting CloudWatch metric to estimate number of objects...")
 	now := time.Now()
-	oneDayAgo := time.Unix(now.Unix()-(60*60*24), 0)
+	someDaysAgo := time.Unix(now.Unix()-(3*60*60*24), 0)
 	cwClient := cloudwatch.New(sess, cfg)
 	resp, err := cwClient.GetMetricStatistics(&cloudwatch.GetMetricStatisticsInput{
 		Namespace:  aws.String("AWS/S3"),
 		MetricName: aws.String("NumberOfObjects"),
 		Unit:       aws.String("Count"),
-		StartTime:  aws.Time(oneDayAgo),
+		StartTime:  aws.Time(someDaysAgo),
 		EndTime:    aws.Time(now),
 		Period:     aws.Int64(60 * 60),
 		Statistics: []*string{
@@ -68,7 +72,8 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
-	datapoint := resp.Datapoints[len(resp.Datapoints)-1]
+	sort.Slice(resp.Datapoints, func(i, j int) bool { return (*resp.Datapoints[i].Timestamp).After(*resp.Datapoints[j].Timestamp) })
+	datapoint := resp.Datapoints[0]
 	fmt.Printf("Number of objects: %d (measured %s on %s)\n", int64(*datapoint.Sum), humanize.Time(*datapoint.Timestamp), *datapoint.Timestamp)
 
 	// list the bucket
@@ -77,9 +82,10 @@ func main() {
 	var oldBytes int64
 	s3Client := s3.New(sess, cfg)
 	// fmt.Println("Deleted objects:")
-	err = s3Client.ListObjectVersionsPages(&s3.ListObjectVersionsInput{
-		Bucket: aws.String(bucket),
-	},
+	err = s3Client.ListObjectVersionsPages(
+		&s3.ListObjectVersionsInput{
+			Bucket: aws.String(bucket),
+		},
 		func(page *s3.ListObjectVersionsOutput, lastPage bool) bool {
 			pageNum++
 			numVersions += len(page.Versions)
@@ -105,7 +111,7 @@ func main() {
 
 	// summary
 	fmt.Println()
-	fmt.Printf("Deleted %s (%d bytes)\n", humanize.Bytes(uint64(oldBytes)), oldBytes)
+	fmt.Printf("Deleted size: %s (%d bytes)\n", humanize.Bytes(uint64(oldBytes)), oldBytes)
 	fmt.Println("Costs:")
 	fmt.Printf("- $%f / month\n", float64(oldBytes)/1000000000.0*0.0300)
 	fmt.Printf("- $%f / hour\n", float64(oldBytes)/1000000000.0*0.0300/(24*30))

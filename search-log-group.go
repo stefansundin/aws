@@ -43,7 +43,10 @@ func main() {
 	hours := offset / 60 / 60
 
 	// call aws
-	svc := cloudwatchlogs.New(session.New())
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := cloudwatchlogs.New(sess)
 
 	params := &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName:  aws.String(logGroupName),

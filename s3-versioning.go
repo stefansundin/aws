@@ -23,7 +23,10 @@ func main() {
 		}
 	}
 
-	sess := session.New()
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Config:            aws.Config{Region: aws.String("us-east-1")},
+	}))
 	client := s3.New(sess)
 
 	// list buckets if no args are provided
@@ -39,20 +42,18 @@ func main() {
 		fmt.Println(*bucket.Name)
 		var err2 error
 
-		getBucketLocationResp, err2 := client.GetBucketLocation(&s3.GetBucketLocationInput{
-			Bucket: bucket.Name,
-		})
+		ctx := aws.BackgroundContext()
+		getBucketLocationResp, err2 := client.GetBucketLocationWithContext(ctx,
+			&s3.GetBucketLocationInput{
+				Bucket: bucket.Name,
+			},
+			s3.WithNormalizeBucketLocation,
+		)
 		if err2 != nil {
 			fmt.Println(err2.Error())
 			return
 		}
-		var region string
-		if getBucketLocationResp.LocationConstraint == nil {
-			region = "us-east-1"
-		} else {
-			region = *getBucketLocationResp.LocationConstraint
-		}
-		cfg := aws.NewConfig().WithRegion(region)
+		cfg := aws.NewConfig().WithRegion(*getBucketLocationResp.LocationConstraint)
 		svc := s3.New(sess, cfg)
 
 		getBucketVersioningResp, err2 := svc.GetBucketVersioning(&s3.GetBucketVersioningInput{

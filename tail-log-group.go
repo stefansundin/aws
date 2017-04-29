@@ -21,7 +21,10 @@ func main() {
 		logGroupName = "/aws/lambda/default-log-group"
 	}
 
-	svc := cloudwatchlogs.New(session.New())
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := cloudwatchlogs.New(sess)
 
 	params := &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName: aws.String(logGroupName),

@@ -22,7 +22,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	asClient := autoscaling.New(session.New())
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	asClient := autoscaling.New(sess)
 	var groups []string
 	err := asClient.DescribeAutoScalingGroupsPages(&autoscaling.DescribeAutoScalingGroupsInput{},
 		func(page *autoscaling.DescribeAutoScalingGroupsOutput, lastPage bool) bool {
@@ -36,7 +40,11 @@ func main() {
 		})
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		os.Exit(1)
+	}
+	if len(groups) == 0 {
+		fmt.Println("No autoscaling groups.")
+		os.Exit(1)
 	}
 	fmt.Println("Suspected autoscaling groups:")
 	fmt.Println(groups)
@@ -49,7 +57,7 @@ func main() {
 		})
 		if err != nil {
 			fmt.Println(err.Error())
-			return
+			os.Exit(1)
 		}
 		for _, activity := range resp.Activities {
 			if strings.Contains(*activity.Description, sir) {

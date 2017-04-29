@@ -1,7 +1,5 @@
 package main
 
-// To check another region, run:
-// AWS_REGION=us-west-2 ./sum-unused-ebs
 // https://aws.amazon.com/ebs/pricing/
 // https://aws.amazon.com/ebs/previous-generation/
 
@@ -24,7 +22,17 @@ func getName(tags []*ec2.Tag) *string {
 }
 
 func main() {
-	client := ec2.New(session.New())
+	if len(os.Args) < 2 {
+		fmt.Println("Please supply a region.")
+		os.Exit(1)
+	}
+	region := os.Args[1]
+
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Config:            aws.Config{Region: aws.String(region)},
+	}))
+	client := ec2.New(sess)
 
 	pricing := map[string]float64{
 		"standard": 0.05,
@@ -81,17 +89,18 @@ func main() {
 	fmt.Println()
 
 	fmt.Println("EBS volumes associated with stopped instances:")
-	err = client.DescribeVolumesPages(&ec2.DescribeVolumesInput{
-		MaxResults: aws.Int64(100), // DescribeInstanceStatus() below takes max 100 items
-		Filters: []*ec2.Filter{
-			{
-				Name: aws.String("status"),
-				Values: []*string{
-					aws.String("in-use"),
+	err = client.DescribeVolumesPages(
+		&ec2.DescribeVolumesInput{
+			MaxResults: aws.Int64(100), // DescribeInstanceStatus() below takes max 100 items
+			Filters: []*ec2.Filter{
+				{
+					Name: aws.String("status"),
+					Values: []*string{
+						aws.String("in-use"),
+					},
 				},
 			},
 		},
-	},
 		func(page *ec2.DescribeVolumesOutput, lastPage bool) bool {
 			var instancesIds []*string
 			for _, vol := range page.Volumes {
@@ -139,6 +148,7 @@ func main() {
 		return
 	}
 
+	fmt.Println()
 	fmt.Println("Summary:")
 	for volumeType, volumeUsage := range stoppedUsage {
 		if volumeUsage == 0 {
