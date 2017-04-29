@@ -59,6 +59,7 @@ Add awscli aliases. `cat ~/.aws/cli/alias`
 
 whoami = sts get-caller-identity
 version = --version
+upgrade = !aws version && pip install -U awscli
 
 federate =
   !f() {
@@ -72,6 +73,11 @@ assume-role =
     DIR=~/src/aws/cli
     source "$DIR/venv/bin/activate"
     "$DIR/assume-role.py" "$@"
+  }; f
+
+decode-message =
+  !f() {
+    aws sts decode-authorization-message --encoded-message "$1" | jq -Mr .DecodedMessage | jq
   }; f
 
 s3-url =
