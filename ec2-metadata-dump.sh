@@ -1,8 +1,8 @@
 #!/bin/bash
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
-# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e
+# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash
 # Also print user-data:
-# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -e -s user-data
+# curl -sfL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -s user-data
 
 function get {
   curl -sf http://169.254.169.254/2016-09-02/$1
