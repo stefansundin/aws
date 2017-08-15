@@ -59,7 +59,7 @@ Add awscli aliases. `cat ~/.aws/cli/alias`
 
 whoami = sts get-caller-identity
 version = --version
-upgrade = !aws version && pip install -U awscli
+upgrade = !aws version && pip2 install -U awscli
 
 federate =
   !f() {
@@ -115,13 +115,72 @@ ec2-migrate-instance =
       export AWS_DEFAULT_REGION=$2
     fi
     echo "Stopping $1..."
-    aws ec2 stop-instances --output text --instance-ids $1 || return
-    while [ $(aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids $1) != "stopped" ]; do
+    aws ec2 stop-instances --output text --instance-ids "$1" || return
+    while [ $(aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1") != "stopped" ]; do
       echo "Waiting for $1 to reach state 'stopped'..."
       sleep 1
     done
     echo "Starting $1..."
-    aws ec2 start-instances --output text --instance-ids $1
+    aws ec2 start-instances --output text --instance-ids "$1"
+  }; f
+
+ec2-complex-migrate-instance =
+  !f() {
+    if [ $# -gt 1 ]; then
+      echo "Region: $2"
+      export AWS_DEFAULT_REGION=$2
+    fi
+    export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-$(aws configure get region)}
+    if aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1" 2>&1 | grep InvalidInstanceID.NotFound > /dev/null; then
+      echo "Can't find $1 in $AWS_DEFAULT_REGION. Is it in another region?"
+      return
+    fi
+    if aws ec2 describe-instance-status --instance-ids "$1" --query InstanceStatuses[0].Events | jq -Mre '. | map(select(.Description | startswith("[Completed]") | not)) | length == 0' > /dev/null; then
+      echo "It doesn't look like $1 has a scheduled event."
+      echo "Press [Enter] to continue anyway."
+      read
+    fi
+    NAME=$(aws ec2 describe-tags --filters "Name=resource-type,Values=instance" "Name=resource-id,Values=$1" "Name=key,Values=Name" --query Tags[0].Value --output text)
+    echo "NAME: $NAME"
+    echo "EC2: https://console.aws.amazon.com/ec2/v2/home?region=$AWS_DEFAULT_REGION#Instances:search=$1;sort=desc:launchTime"
+    ASG=$(aws ec2 describe-tags --filters "Name=resource-type,Values=instance" "Name=resource-id,Values=$1" "Name=key,Values=aws:autoscaling:groupName" --query Tags[0].Value --output text)
+    if [ "$ASG" = "None" ]; then
+      echo "Instance $1 does not belong to an ASG."
+    else
+      echo "ASG: $ASG"
+      echo "ASG: https://console.aws.amazon.com/ec2/autoscaling/home?region=$AWS_DEFAULT_REGION#AutoScalingGroups:id=$ASG;filter=$ASG;view=details"
+    fi
+    echo "Press [Enter] to continue."
+    read
+    if [ "$ASG" != "None" ]; then
+      if aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query AutoScalingGroups[0].SuspendedProcesses --output text | grep HealthCheck; then
+        echo "HealthCheck is already suspended."
+      else
+        echo "HealthCheck is not suspended, suspending..."
+        aws autoscaling suspend-processes --auto-scaling-group-name "$ASG" --scaling-processes HealthCheck
+      fi
+      ASGINFO=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query AutoScalingGroups[0])
+      if [ "$(echo $ASGINFO | jq -M .LoadBalancerNames)" != "[]" ]; then
+        ELB=$(echo $ASGINFO | jq -Mr .LoadBalancerNames[0])
+        echo "ELB: $ELB"
+        echo "ELB: https://console.aws.amazon.com/ec2/v2/home?region=$AWS_DEFAULT_REGION#LoadBalancers:search=$ELB"
+      fi
+      echo "Sleeping 10 seconds before stopping $1..."
+      sleep 10
+    fi
+    echo "Stopping $1..."
+    aws ec2 stop-instances --output text --instance-ids "$1" || return
+    while [ $(aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1") != "stopped" ]; do
+      echo "Waiting for $1 to reach state 'stopped'..."
+      sleep 1
+    done
+    echo "Starting $1..."
+    aws ec2 start-instances --output text --instance-ids "$1"
+    if [ "$ASG" != "None" ]; then
+      echo "Sleeping 5 seconds before resuming HealthCheck on ASG..."
+      sleep 5
+      aws autoscaling resume-processes --auto-scaling-group-name "$ASG" --scaling-processes HealthCheck
+    fi
   }; f
 
 cf-validate =
