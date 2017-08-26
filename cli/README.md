@@ -183,6 +183,31 @@ ec2-complex-migrate-instance =
     fi
   }; f
 
+# TODO: test this with an image backed by multiple snapshots!!!
+delete-ami =
+  !f() {
+    export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-$(aws configure get region)}
+    RUNNING_INSTANCES=$(aws ec2 describe-instances --filters "Name=image-id,Values=$1" --query Reservations[*].Instances[*].[InstanceId] --output text)
+    if [[ -n "$RUNNING_INSTANCES" ]]; then
+      echo "This ami was used to launch the following instances:"
+      echo "$RUNNING_INSTANCES"
+      return 1
+    fi
+
+    aws ec2 describe-images --owners self --image-ids "$1" --query Images[0] || return
+    SNAPSHOTS=$(aws ec2 describe-images --owners self --image-ids "$1" --query Images[*].BlockDeviceMappings[?Ebs].Ebs.SnapshotId --output text)
+    aws ec2 describe-snapshots --snapshot-ids "$SNAPSHOTS" --query Snapshots[*] || return
+    aws ec2 describe-image-attribute --attribute launchPermission --image-id "$1"
+    echo
+    echo "Will delete $1 and $SNAPSHOTS"
+    echo "Press [Enter] to continue."
+    read
+
+    aws ec2 deregister-image --image-id "$1" || return
+    aws ec2 delete-snapshot --snapshot-id "$SNAPSHOTS" || return
+    echo "Done!"
+  }; f
+
 cf-validate =
   !f() {
     DIR=~/src/aws/cli
