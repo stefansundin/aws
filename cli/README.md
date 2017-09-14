@@ -24,6 +24,9 @@ aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... 
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
 aws s3-sign myrandombucket/logs/build.log
 aws ec2-migrate-instance i-01234567890abcdef
+aws ec2-complex-migrate-instance i-01234567890abcdef
+aws rds-wait-for-instance production-db
+aws rds-wait-for-snapshot production-db-2017-09-13
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
@@ -206,6 +209,41 @@ delete-ami =
     aws ec2 deregister-image --image-id "$1" || return
     aws ec2 delete-snapshot --snapshot-id "$SNAPSHOTS" || return
     echo "Done!"
+  }; f
+
+rds-wait-for-instance =
+  !f() {
+    if [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    while [ true ]; do
+      data=$(aws rds describe-db-instances --db-instance-identifier "$1" --query DBInstances[0])
+      state=$(echo $data | jq -Mr .DBInstanceStatus)
+      echo "$(date "+%F %T"): $1 state: $state"
+      if [ "$state" == "available" ]; then
+        afplay /System/Library/Sounds/Ping.aiff
+        #say "Database instance ready."
+      fi
+      sleep 1
+    done
+  }; f
+
+rds-wait-for-snapshot =
+  !f() {
+    if [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    while [ true ]; do
+      data=$(aws rds describe-db-snapshots --db-snapshot-identifier "$1" --query DBSnapshots[0])
+      state=$(echo $data | jq -Mr .Status)
+      progress=$(echo $data | jq -Mr .PercentProgress)
+      echo "$(date "+%F %T"): $1 state: $state $progress%"
+      if [ "$state" == "available" ]; then
+        afplay /System/Library/Sounds/Ping.aiff
+        #say "Database snapshot done."
+      fi
+      sleep 1
+    done
   }; f
 
 cf-validate =
