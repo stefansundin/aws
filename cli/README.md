@@ -114,7 +114,6 @@ s3-sign =
 ec2-migrate-instance =
   !f() {
     if [ $# -gt 1 ]; then
-      echo "Region: $2"
       export AWS_DEFAULT_REGION=$2
     fi
     echo "Stopping $1..."
@@ -130,10 +129,8 @@ ec2-migrate-instance =
 ec2-complex-migrate-instance =
   !f() {
     if [ $# -gt 1 ]; then
-      echo "Region: $2"
       export AWS_DEFAULT_REGION=$2
     fi
-    export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-$(aws configure get region)}
     if aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1" 2>&1 | grep InvalidInstanceID.NotFound > /dev/null; then
       echo "Can't find $1 in $AWS_DEFAULT_REGION. Is it in another region?"
       return
@@ -189,7 +186,10 @@ ec2-complex-migrate-instance =
 # TODO: test this with an image backed by multiple snapshots!!!
 delete-ami =
   !f() {
-    export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-$(aws configure get region)}
+    if [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+
     RUNNING_INSTANCES=$(aws ec2 describe-instances --filters "Name=image-id,Values=$1" --query Reservations[*].Instances[*].[InstanceId] --output text)
     if [[ -n "$RUNNING_INSTANCES" ]]; then
       echo "This ami was used to launch the following instances:"
@@ -218,6 +218,7 @@ rds-wait-for-instance =
     fi
     while [ true ]; do
       data=$(aws rds describe-db-instances --db-instance-identifier "$1" --query DBInstances[0])
+      [ $? != 0 ] && sleep 1 && continue
       state=$(echo $data | jq -Mr .DBInstanceStatus)
       echo "$(date "+%F %T"): $1 state: $state"
       if [ "$state" == "available" ]; then
@@ -235,6 +236,7 @@ rds-wait-for-snapshot =
     fi
     while [ true ]; do
       data=$(aws rds describe-db-snapshots --db-snapshot-identifier "$1" --query DBSnapshots[0])
+      [ $? != 0 ] && sleep 1 && continue
       state=$(echo $data | jq -Mr .Status)
       progress=$(echo $data | jq -Mr .PercentProgress)
       echo "$(date "+%F %T"): $1 state: $state $progress%"
