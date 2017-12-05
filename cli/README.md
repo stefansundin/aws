@@ -4,7 +4,7 @@ Handy awscli aliases:
 - s3-url: Translate http urls to S3 into s3:// urls.
 - s3-cat: Output the contents of a file on S3.
 - s3-sign: Easily sign a GET request.
-- ec2-migrate-instance: Stop and start an instance to migrate it to new hardware. If the instance is in an autoscaling group, you should first suspend the HealthCheck process (do not forget to remove it again!).
+- ec2-migrate-instance: Stop and start an instance to migrate it to new hardware. If the instance is in an autoscaling group, the HealthCheck process will first be suspended, then re-enabled when done.
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
@@ -24,7 +24,6 @@ aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... 
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
 aws s3-sign myrandombucket/logs/build.log
 aws ec2-migrate-instance i-01234567890abcdef
-aws ec2-complex-migrate-instance i-01234567890abcdef
 aws rds-wait-for-instance production-db
 aws rds-wait-for-snapshot production-db-2017-09-13
 aws cf-validate webservers.yml
@@ -116,23 +115,9 @@ ec2-migrate-instance =
     if [ $# -gt 1 ]; then
       export AWS_DEFAULT_REGION=$2
     fi
-    echo "Stopping $1..."
-    aws ec2 stop-instances --output text --instance-ids "$1" || return
-    while [ $(aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1") != "stopped" ]; do
-      echo "Waiting for $1 to reach state 'stopped'..."
-      sleep 1
-    done
-    echo "Starting $1..."
-    aws ec2 start-instances --output text --instance-ids "$1"
-  }; f
-
-ec2-complex-migrate-instance =
-  !f() {
-    if [ $# -gt 1 ]; then
-      export AWS_DEFAULT_REGION=$2
-    fi
+    REGION=${AWS_DEFAULT_REGION:-$(aws configure get region)}
     if aws ec2 describe-instance-status --include-all-instances --query InstanceStatuses[0].InstanceState.Name --output text --instance-ids "$1" 2>&1 | grep InvalidInstanceID.NotFound > /dev/null; then
-      echo "Can't find $1 in $AWS_DEFAULT_REGION. Is it in another region?"
+      echo "Can't find $1 in $REGION. Is it in another region?"
       return
     fi
     if aws ec2 describe-instance-status --instance-ids "$1" --query InstanceStatuses[0].Events | jq -Mre '. | map(select(.Description | startswith("[Completed]") | not)) | length == 0' > /dev/null; then
@@ -142,13 +127,14 @@ ec2-complex-migrate-instance =
     fi
     NAME=$(aws ec2 describe-tags --filters "Name=resource-type,Values=instance" "Name=resource-id,Values=$1" "Name=key,Values=Name" --query Tags[0].Value --output text)
     echo "NAME: $NAME"
-    echo "EC2: https://console.aws.amazon.com/ec2/v2/home?region=$AWS_DEFAULT_REGION#Instances:search=$1;sort=desc:launchTime"
+    echo "EC2: https://console.aws.amazon.com/ec2/v2/home?region=$REGION#Instances:search=$1;sort=desc:launchTime"
     ASG=$(aws ec2 describe-tags --filters "Name=resource-type,Values=instance" "Name=resource-id,Values=$1" "Name=key,Values=aws:autoscaling:groupName" --query Tags[0].Value --output text)
     if [ "$ASG" = "None" ]; then
       echo "Instance $1 does not belong to an ASG."
     else
       echo "ASG: $ASG"
-      echo "ASG: https://console.aws.amazon.com/ec2/autoscaling/home?region=$AWS_DEFAULT_REGION#AutoScalingGroups:id=$ASG;filter=$ASG;view=details"
+      echo "ASG: https://console.aws.amazon.com/ec2/autoscaling/home?region=$REGION#AutoScalingGroups:id=$ASG;filter=$ASG;view=details"
+      echo "DesiredCapacity: $(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query AutoScalingGroups[0].DesiredCapacity --output text)"
     fi
     echo "Press [Enter] to continue."
     read
@@ -163,7 +149,7 @@ ec2-complex-migrate-instance =
       if [ "$(echo $ASGINFO | jq -M .LoadBalancerNames)" != "[]" ]; then
         ELB=$(echo $ASGINFO | jq -Mr .LoadBalancerNames[0])
         echo "ELB: $ELB"
-        echo "ELB: https://console.aws.amazon.com/ec2/v2/home?region=$AWS_DEFAULT_REGION#LoadBalancers:search=$ELB"
+        echo "ELB: https://console.aws.amazon.com/ec2/v2/home?region=$REGION#LoadBalancers:search=$ELB"
       fi
       echo "Sleeping 10 seconds before stopping $1..."
       sleep 10
