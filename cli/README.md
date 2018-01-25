@@ -5,18 +5,29 @@ Handy awscli aliases:
 - s3-cat: Output the contents of a file on S3.
 - s3-sign: Easily sign a GET request.
 - ec2-migrate-instance: Stop and start an instance to migrate it to new hardware. If the instance is in an autoscaling group, the HealthCheck process will first be suspended, then re-enabled when done.
+- delete-ami: Delete an ami and the snapshot backing it. Checks if there's an instance running from that ami.
+- rds-pending-reboot: List RDS databases that are pending reboot due to parameter group updates.
+- rds-replicalag: List RDS replicas and their ReplicaLag.
+- rds-wait-for-instance: Waits until an RDS database is "available", and then notifies you.
+- rds-wait-for-snapshot: Waits until an RDS snapshot is "available", and then notifies you.
+- rds-watch-instance-status: Helps you track the exact time an RDS database changes its status, and for how long.
+- rds-download-logs: Download all the logs from an RDS database (with no arguments, it downloads logs from all RDS databases).
+- cloudfront-wait-deployed: Waits until a CloudFront distribution is "Deployed", and then notifies you.
 - cf-validate: Validate a CloudFormation template.
 - cf-diff: Diff a stack against a template file.
 - cf-dump: Download info about a stack (useful to "backup" a stack along with its parameters before you delete it).
 - cf-watch: Watch a stack update in real-time.
 - logs-ls: List all CloudWatch log groups.
 - kms-decrypt: Easily decrypt some base64-encoded ciphertext.
+- route53-find-dupes: Lists your Route53 zones in a way that makes it easy to spot duplicate zones.
+- route53-dump: Download your zone information.
 
 # Usage
 
 Example commands:
 
 ```bash
+aws username
 aws federate admin
 aws assume-role admin
 aws s3-url https://myrandombucket.s3.amazonaws.com/assets/img/logo.png # => s3://myrandombucket/assets/img/logo.png
@@ -24,8 +35,14 @@ aws s3-url http://s3.amazonaws.com/myrandombucket/logs/build.log?X-Amz-Date=... 
 aws s3-cat http://s3.amazonaws.com/myrandombucket/logs/build.log
 aws s3-sign myrandombucket/logs/build.log
 aws ec2-migrate-instance i-01234567890abcdef
-aws rds-wait-for-instance production-db
-aws rds-wait-for-snapshot production-db-2017-09-13
+aws delete-ami ami-12352a5d
+aws rds-pending-reboot
+aws rds-replicalag
+aws aws rds-wait-for-instance production-db
+aws aws rds-wait-for-snapshot production-db-2017-09-13
+aws rds-watch-instance-status production-db
+aws rds-download-logs production-db
+aws cloudfront-wait-deployed E7Z2NG1MI10E7Q
 aws cf-validate webservers.yml
 aws cf-diff prod-webservers webservers.yml
 AWS_REGION=us-west-2 aws cf-diff stage-webservers webservers.yml
@@ -34,6 +51,8 @@ aws cf-dump prod-webservers
 aws cf-watch prod-webservers
 aws logs-ls
 aws kms-decrypt YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=
+aws route53-find-dupes
+aws route53-dump Z6R4FU12H3ATTX
 ```
 
 Example federate bash aliases:
@@ -63,6 +82,11 @@ whoami = sts get-caller-identity
 version = --version
 upgrade = !aws version && pip2 install -U awscli
 
+username =
+  !f() {
+    aws sts get-caller-identity --query Arn --output text | cut -d/ -f2
+  }; f
+
 federate =
   !f() {
     DIR=~/src/aws/cli
@@ -84,7 +108,7 @@ decode-message =
 
 s3-url =
   !f() {
-    if [[ "$1" =~ https?://s3.amazonaws.com/([^/]+)/([^?]+) ]] || [[ "$1" =~ https?://(.+).s3.amazonaws.com/([^?]+) ]] || [[ "$1" =~ s3://([^/]+)/([^?]+) ]]; then
+    if [[ "$1" =~ https?://s3.*.amazonaws.com/([^/]+)/([^?]+) ]] || [[ "$1" =~ https?://(.+).s3.amazonaws.com/([^?]+) ]] || [[ "$1" =~ https?://console.aws.amazon.com/s3/buckets/([^/]+)/([^?]+) ]] || [[ "$1" =~ s3://([^/]+)/([^?]+) ]]; then
       echo "s3://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
     else
       >&2 echo "Invalid url."
@@ -197,18 +221,63 @@ delete-ami =
     echo "Done!"
   }; f
 
+rds-pending-reboot =
+  !f() {
+    for region in us-east-1 us-east-2 us-west-1 us-west-2; do
+      echo $region
+      export AWS_DEFAULT_REGION=$region
+      aws rds describe-db-instances --query 'DBInstances[].[DBInstanceIdentifier,DBInstanceStatus,DBParameterGroups[0].ParameterApplyStatus]' --output table
+      echo
+    done
+  }; f
+
+rds-replicalag =
+  !f() {
+    for region in us-east-1 us-east-2 us-west-1 us-west-2; do
+      export AWS_DEFAULT_REGION=$region
+      while read db source; do
+        [[ "$source" == "None" ]] && continue
+        lag=$(aws cloudwatch get-metric-statistics --namespace AWS/RDS --dimensions Name=DBInstanceIdentifier,Value=$db --metric-name ReplicaLag --start-time $(date -v-3M -u +%FT%TZ) --end-time $(date -v+3M -u +%FT%TZ) --period 60 --statistics Average | jq -M '.Datapoints | sort_by(.Timestamp) | reverse[0].Average')
+        printf "%s | %-30s | ReplicaLag: %s seconds\n" $region $db $lag
+      done <<< "$(aws rds describe-db-instances --query 'DBInstances[].[DBInstanceIdentifier,ReadReplicaSourceDBInstanceIdentifier]' --output text)"
+    done
+  }; f
+
 rds-wait-for-instance =
   !f() {
-    if [ $# -gt 1 ]; then
+    db="$1"
+    if [[ "$db" =~ ^([a-z0-9\-]+)\.[a-z0-9]+\.([a-z0-9\-]+)\.rds\.amazonaws\.com ]]; then
+      db=${BASH_REMATCH[1]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[2]}
+    elif [[ "$db" =~ ^arn:aws:rds:([a-z0-9\-]+):[0-9]+:db:([a-z0-9\-]+)$ ]]; then
+      db=${BASH_REMATCH[2]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[1]}
+    elif [ $# -gt 1 ]; then
       export AWS_DEFAULT_REGION=$2
     fi
     while [ true ]; do
-      data=$(aws rds describe-db-instances --db-instance-identifier "$1" --query DBInstances[0])
-      [ $? != 0 ] && sleep 1 && continue
-      state=$(echo $data | jq -Mr .DBInstanceStatus)
-      echo "$(date "+%F %T"): $1 state: $state"
-      if [ "$state" == "available" ]; then
+      data=$(aws rds describe-db-instances --db-instance-identifier "$db" --query DBInstances[0])
+      if [ $? != 0 ]; then
         afplay /System/Library/Sounds/Ping.aiff
+        printf '\007'
+        sleep 1
+        continue
+      fi
+      state=$(echo $data | jq -Mr .DBInstanceStatus)
+      master_id=$(echo $data | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
+      if [ "$master_id" != "null" ]; then
+        lag=$(aws cloudwatch get-metric-statistics --namespace AWS/RDS --dimensions Name=DBInstanceIdentifier,Value=$db --metric-name ReplicaLag --start-time $(date -v-3M -u +%FT%TZ) --end-time $(date -v+3M -u +%FT%TZ) --period 60 --statistics Average | jq -M '.Datapoints | sort_by(.Timestamp) | reverse[0].Average')
+        state="$state (ReplicaLag: $lag seconds)"
+      fi
+      snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$db" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%%") | join(", ")')
+      printf "$(date "+%F %T"): $db state: $state"
+      if [ "$snaps" != "" ]; then
+        printf " (snapshot progress: $snaps)"
+      fi
+      echo
+      if [[ "$state" == "available" || "$state" == "available (ReplicaLag: 0 seconds)" ]]; then
+        afplay /System/Library/Sounds/Ping.aiff
+        printf '\007'
         #say "Database instance ready."
       fi
       sleep 1
@@ -229,6 +298,102 @@ rds-wait-for-snapshot =
       if [ "$state" == "available" ]; then
         afplay /System/Library/Sounds/Ping.aiff
         #say "Database snapshot done."
+      fi
+      sleep 1
+    done
+  }; f
+
+rds-watch-instance-status =
+  !f() {
+    db="$1"
+    if [[ "$db" =~ ^([a-z0-9\-]+)\.[a-z0-9]+\.([a-z0-9\-]+)\.rds\.amazonaws\.com ]]; then
+      db=${BASH_REMATCH[1]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[2]}
+    elif [[ "$db" =~ ^arn:aws:rds:([a-z0-9\-]+):[0-9]+:db:([a-z0-9\-]+)$ ]]; then
+      db=${BASH_REMATCH[2]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[1]}
+    elif [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    last_state=""
+    while [ true ]; do
+      data=$(aws rds describe-db-instances --db-instance-identifier "$db" --query DBInstances[0] 2>/dev/null)
+      if [ $? == 0 ]; then
+        state=$(echo "$data" | jq -Mr .DBInstanceStatus)
+        master_id=$(echo "$data" | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
+        if [ "$master_id" != "null" ]; then
+          snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$master_id" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%") | join(", ")')
+          if [ "$snaps" != "" ]; then
+            state="$state (master snapshot progress: $snaps)"
+          fi
+        fi
+      else
+        state="not found"
+      fi
+      if [ "$state" != "$last_state" ]; then
+        last_state=$state
+        echo "$(date "+%F %T"): $db state: $state"
+        #afplay /System/Library/Sounds/Ping.aiff
+      fi
+      sleep 1
+    done
+  }; f
+
+rds-download-logs =
+  !f() {
+    if [ $# -eq 0 ]; then
+      for region in us-east-1 us-east-2 us-west-1 us-west-2; do
+        echo $region
+        export AWS_DEFAULT_REGION=$region
+        aws rds describe-db-instances --query DBInstances[*].[DBInstanceIdentifier] --output text | while read -r db; do
+          aws rds-download-logs "$db" "$region"
+        done
+      done
+      return
+    elif [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    db="$1"
+    if [[ "$db" =~ ^([a-z0-9\-]+)\.[a-z0-9]+\.([a-z0-9\-]+)\.rds\.amazonaws\.com ]]; then
+      db=${BASH_REMATCH[1]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[2]}
+    elif [[ "$db" =~ ^arn:aws:rds:([a-z0-9\-]+):[0-9]+:db:([a-z0-9\-]+)$ ]]; then
+      db=${BASH_REMATCH[2]}
+      export AWS_DEFAULT_REGION=${BASH_REMATCH[1]}
+    elif [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    dir="$db-$(date -u +%FT%H-%M-%SZ)"
+    mkdir -p "$dir"
+    aws rds describe-events --source-type db-instance --source-identifier "$db" --start-time $(date -v-13d -u +%FT%TZ) --end-time $(date -v+1d -u +%FT%TZ) --output json > "$dir/events.json"
+    echo "Downloaded recent events to $dir/events.json"
+    aws rds describe-db-log-files --db-instance-identifier "$db" | jq -Mc '.DescribeDBLogFiles | sort_by(.LastWritten) | reverse | .[]' | while read -r log; do
+      f=$(echo "$log" | jq -Mr .LogFileName)
+      d=$(echo "$log" | jq -Mr '.LastWritten / 1000')
+      kb=$(echo "$log" | jq -Mr '.Size / 1024 | floor')
+      echo "Downloading $dir/$f ($kb kB), last written $(date -r $d +'%Y-%m-%d %H:%M:%S')"
+      mkdir -p "$dir/$(dirname "$f")"
+      aws rds download-db-log-file-portion --db-instance-identifier "$db" --log-file-name "$f" --starting-token 0 --output text > "$dir/$f"
+      touch -m -t "$(date -r $d +%Y%m%d%H%M.%S)" "$dir/$f"
+    done
+  }; f
+
+cloudfront-wait-deployed =
+  !f() {
+    if [ $# -gt 1 ]; then
+      export AWS_DEFAULT_REGION=$2
+    fi
+    if [ $# -gt 2 ]; then
+      export AWS_PROFILE=$3
+    fi
+    echo "https://console.aws.amazon.com/cloudfront/home?#distribution-settings:$1"
+    while [ true ]; do
+      status=$(aws cloudfront get-distribution --id "$1" --query Distribution.Status --output text)
+      [ $? != 0 ] && sleep 1 && continue
+      echo "$(date "+%F %T"): $1 status: $status"
+      if [ "$status" == "Deployed" ]; then
+        afplay /System/Library/Sounds/Ping.aiff
+        #say "CloudFront distribution deployed."
       fi
       sleep 1
     done
@@ -269,6 +434,28 @@ kms-decrypt =
     export AWS_PROFILE="${AWS_PROFILE:-admin}"
     bash -c 'aws kms decrypt --ciphertext-blob fileb://<(echo "$@" | base64 -D) --query Plaintext --output text | base64 -D' dummy "$@"
     echo
+  }; f
+
+route53-find-dupes =
+  !f() {
+    aws route53 list-hosted-zones --query HostedZones[].[Name] --output text | sort | uniq -c
+  }; f
+
+route53-dump =
+  !f() {
+    if [ $# -gt 0 ]; then
+      zones="$@"
+    else
+      zones="$(aws route53 list-hosted-zones --query HostedZones[].[Id] --output text | sed -e 's/\/hostedzone\///')"
+    fi
+    dir="route53-zones-$(date -u +%FT%H-%M-%SZ)"
+    mkdir -p "$dir"
+    for zone in $zones; do
+      aws route53 get-hosted-zone --id "$zone" --output json > "$dir/$zone.json"
+      domain=$(jq -Mr .HostedZone.Name < "$dir/$zone.json")
+      echo "$dir/$zone-${domain}json"
+      aws route53 list-resource-record-sets --hosted-zone-id "$zone" --output json > "$dir/$zone-${domain}json"
+    done
   }; f
 
 ```
