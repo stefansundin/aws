@@ -67,7 +67,7 @@ alias aws-admin="aws federate arn:aws:iam::123456789012:role/AdministratorRole a
 Install Python pre-requisites.
 
 ```bash
-brew install python3
+brew install python
 pip3 install -U virtualenv
 python3 -m virtualenv venv -p python3
 (source venv/bin/activate && pip3 install -U -r requirements.txt)
@@ -103,7 +103,7 @@ assume-role =
 
 decode-message =
   !f() {
-    aws sts decode-authorization-message --encoded-message "$1" | jq -Mr .DecodedMessage | jq
+    aws sts decode-authorization-message --encoded-message "$1" --query DecodedMessage --output text | jq
   }; f
 
 s3-url =

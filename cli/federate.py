@@ -11,7 +11,7 @@
 # alias aws-admin="~/src/aws/cli/federate.py arn:aws:iam::123456789012:role/AdministratorRole arn:aws:iam::123456789012:mfa/username"
 
 # Docs:
-# http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
+# https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
 # https://aws.amazon.com/blogs/security/enable-your-federated-users-to-work-in-the-aws-management-console-for-up-to-12-hours/
 # http://boto.cloudhackers.com/en/latest/ref/sts.html
 
@@ -85,7 +85,7 @@ data = r.json()
 # This URL must be used within 15 minutes
 url = "https://signin.aws.amazon.com/federation"
 url += "?Action=login"
-url += "&Issuer=https://github.com/stefansundin/aws/blob/master/cli/federate.py"
+url += "&Issuer=federate"
 url += "&Destination=" + urllib.parse.quote_plus(dest)
 url += "&SigninToken=" + data["SigninToken"]
 
