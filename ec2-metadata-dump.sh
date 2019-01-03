@@ -59,7 +59,7 @@ echo "security-group-ids: ${SECURITY_GROUP_IDS//$'\n'/ }"
 echo "security-groups: ${SECURITY_GROUPS//$'\n'/ }"
 
 IAM_INFO=$(get meta-data/iam/info)
-if [ $? -eq 22 ]; then
+if [ $? -eq 0 ]; then
   IAM_ROLE=$(get meta-data/iam/security-credentials/)
   IAM_CREDENTIALS=$(get meta-data/iam/security-credentials/$IAM_ROLE)
   echo
