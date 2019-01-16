@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # https://github.com/stefansundin/aws/blob/master/cli/federate.py
 
 # This script lets you assume a role in the AWS console with a session duration
@@ -63,7 +63,7 @@ kwargs = {
 
 if mfa_serial:
     kwargs["SerialNumber"] = mfa_serial
-    kwargs["TokenCode"] = raw_input("Enter MFA code: ")
+    kwargs["TokenCode"] = input("Enter MFA code: ")
 
 sts = boto3.client("sts")
 role = sts.assume_role(**kwargs)
