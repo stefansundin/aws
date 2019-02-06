@@ -21,13 +21,16 @@ dest = "https://console.aws.amazon.com/console/home"
 
 mfa_serial = None
 
+if "AWS_SHARED_CREDENTIALS_FILE" not in os.environ:
+    os.environ["AWS_SHARED_CREDENTIALS_FILE"] = os.environ["HOME"]+"/.aws/credentials"
+
 if len(sys.argv) == 2:
     if sys.argv[1].startswith("arn:aws:iam:"):
         role_arn = sys.argv[1]
     else:
         import configparser
         config = configparser.ConfigParser()
-        config.read([os.environ["HOME"]+"/.aws/credentials"])
+        config.read([os.environ["AWS_SHARED_CREDENTIALS_FILE"]])
         if config.has_option(sys.argv[1], "source_profile"):
             source_profile = config.get(sys.argv[1], "source_profile")
             boto3.setup_default_session(profile_name=source_profile)
@@ -48,6 +51,12 @@ else:
     print("Usage: %s <role_name>" % sys.argv[0])
     print("Usage: %s <role_arn>" % sys.argv[0])
     print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
+    print()
+    print("Available profiles:")
+    import configparser
+    config = configparser.ConfigParser()
+    config.read([os.environ["AWS_SHARED_CREDENTIALS_FILE"]])
+    print(", ".join(filter(lambda p: config.has_option(p,"source_profile"), config.sections())))
     sys.exit(1)
 
 # This is what will show up as the username in the ConsoleLogin event in CloudTrail
