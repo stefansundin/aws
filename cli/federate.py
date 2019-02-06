@@ -20,6 +20,11 @@ import sys, os, urllib, json, requests, boto3
 dest = "https://console.aws.amazon.com/console/home"
 
 mfa_serial = None
+mfa_code = None
+
+if sys.argv[-1].isdigit() and len(sys.argv[-1]) == 6:
+    mfa_code = sys.argv[-1]
+    del sys.argv[-1]
 
 if "AWS_SHARED_CREDENTIALS_FILE" not in os.environ:
     os.environ["AWS_SHARED_CREDENTIALS_FILE"] = os.environ["HOME"]+"/.aws/credentials"
@@ -47,10 +52,10 @@ elif len(sys.argv) == 3:
     mfa_serial = sys.argv[2]
 else:
     print("Insufficient arguments.")
-    print("Usage: %s <profile>" % sys.argv[0])
-    print("Usage: %s <role_name>" % sys.argv[0])
-    print("Usage: %s <role_arn>" % sys.argv[0])
-    print("Usage: %s <role_arn> <mfa_arn>" % sys.argv[0])
+    print("Usage: %s <profile> [mfa_code]" % sys.argv[0])
+    print("Usage: %s <role_name> [mfa_code]" % sys.argv[0])
+    print("Usage: %s <role_arn> [mfa_code]" % sys.argv[0])
+    print("Usage: %s <role_arn> <mfa_arn> [mfa_code]" % sys.argv[0])
     print()
     print("Available profiles:")
     import configparser
@@ -72,7 +77,10 @@ kwargs = {
 
 if mfa_serial:
     kwargs["SerialNumber"] = mfa_serial
-    kwargs["TokenCode"] = input("Enter MFA code: ")
+    if mfa_code:
+        kwargs["TokenCode"] = mfa_code
+    else:
+        kwargs["TokenCode"] = input("Enter MFA code: ")
 
 sts = boto3.client("sts")
 role = sts.assume_role(**kwargs)
