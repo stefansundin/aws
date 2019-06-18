@@ -1,7 +1,18 @@
 AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  CreateNatGateway:
+    Type: String
+    Description: Create the NAT Gateway?
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+Conditions:
+  CreateNatGateway: !Equals [ !Ref CreateNatGateway, 'true' ]
 Resources:
   ElasticIP:
     Type: 'AWS::EC2::EIP'
+    Condition: CreateNatGateway
     Properties:
       Domain: vpc
   VPC:
@@ -40,6 +51,7 @@ Resources:
       SubnetId: !Ref PublicSubnet
   NatGateway:
     Type: 'AWS::EC2::NatGateway'
+    Condition: CreateNatGateway
     Properties:
       SubnetId: !Ref PublicSubnet
       AllocationId: !GetAtt
@@ -75,6 +87,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet1
   PrivateRoute:
     Type: 'AWS::EC2::Route'
+    Condition: CreateNatGateway
     Properties:
       DestinationCidrBlock: 0.0.0.0/0
       RouteTableId: !Ref PrivateRouteTable
