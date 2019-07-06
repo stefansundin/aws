@@ -18,6 +18,165 @@ for bucket in $(aws s3api list-buckets --query Buckets[*].Name --output text); d
 done
 ```
 
+### Bucket policies
+
+Even if you lock out the root user with a bucket policy, it is still able to edit/delete the bucket policy via the management console or aws cli.
+
+https://aws.amazon.com/blogs/security/how-to-restrict-amazon-s3-bucket-access-to-a-specific-iam-role/
+
+Get role id with:
+```
+aws iam get-role --role-name ROLE_NAME
+```
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::bucketname",
+                "arn:aws:s3:::bucketname/*"
+            ],
+            "Condition": {
+                "StringNotLike": {
+                    "aws:userId": [
+                        "123456789012",
+                        "AROAEXAMPLEID:*"
+                    ]
+                }
+            }
+        }
+    ]
+}
+```
+
+Deny access to dangerous things:
+```
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": [
+                "s3:DeleteBucket",
+                "s3:DeleteBucketPolicy",
+                "s3:DeleteBucketWebsite",
+                "s3:PutBucketAcl",
+                "s3:PutBucketCORS",
+                "s3:PutBucketObjectLockConfiguration",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketPublicAccessBlock",
+                "s3:PutBucketWebsite",
+                "s3:PutReplicationConfiguration"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bucketname"
+            ]
+        },
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": [
+                "s3:PutAccelerateConfiguration",
+                "s3:PutAnalyticsConfiguration",
+                "s3:PutBucketLogging",
+                "s3:PutBucketNotification",
+                "s3:PutBucketRequestPayment",
+                "s3:PutBucketVersioning",
+                "s3:PutEncryptionConfiguration",
+                "s3:PutInventoryConfiguration",
+                "s3:PutLifecycleConfiguration",
+                "s3:PutMetricsConfiguration"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bucketname"
+            ],
+            "Condition": {
+                "StringNotLike": {
+                    "aws:userId": [
+                        "123456789012"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": [
+                "s3:BypassGovernanceRetention",
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion",
+                "s3:PutObjectAcl",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectVersionAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bucketname/*"
+            ],
+            "Condition": {
+                "StringNotLike": {
+                    "aws:userId": [
+                        "123456789012"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": [
+                "s3:*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bucketname/*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "s3:object-lock-mode": "COMPLIANCE"
+                }
+            }
+        }
+```
+
+### Object Lock
+
+`--object-lock-retain-until-date` is given in this format: `2019-01-01T12:00:00.000Z`
+
+Calculate Content-MD5:
+```
+ruby -rbase64 -rdigest -e 'puts Base64.strict_encode64(Digest::MD5.digest(File.read("file.zip")))'
+```
+
+### MFA Delete
+
+Enabling [MFA Delete](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html#MultiFactorAuthenticationDelete) must be done by the root user and with the aws cli. U2F is not supported.
+
+Log in with the root user and get the MFA serial number from https://console.aws.amazon.com/iam/home#/security_credentials
+
+The MFA serial number is typically in this format:
+```
+arn:aws:iam::123456789012:mfa/root-account-mfa-device
+```
+
+```
+# Enable MFA Delete:
+aws s3api put-bucket-versioning --profile root --bucket bucketname --versioning-configuration Status=Enabled,MFADelete=Enabled --mfa "mfa_serial_number mfa_code"
+
+# Delete an object version:
+aws s3api delete-object --profile root --bucket bucketname --key path/to/file --version-id longversionid --mfa "mfa_serial_number mfa_code"
+
+# Get versioning status:
+aws s3api get-bucket-versioning --bucket bucketname
+
+# Disable MFA Delete:
+aws s3api put-bucket-versioning --profile root --bucket bucketname --versioning-configuration Status=Enabled,MFADelete=Disabled --mfa "mfa_serial_number mfa_code"
+```
+
+It would be great if this could be done with a U2F device. At least you can enable MFA Delete on a few buckets, and then switch back to U2F until you need to delete objects.
+
 ## EC2
 
 Change EBS "Delete on Termination" flag after launching instance:
