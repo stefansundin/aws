@@ -22,7 +22,8 @@ done
 
 Even if you lock out the root user with a bucket policy, it is still able to edit/delete the bucket policy via the management console or aws cli.
 
-https://aws.amazon.com/blogs/security/how-to-restrict-amazon-s3-bucket-access-to-a-specific-iam-role/
+- https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html
+- https://aws.amazon.com/blogs/security/how-to-restrict-amazon-s3-bucket-access-to-a-specific-iam-role/
 
 Get role id with:
 ```
