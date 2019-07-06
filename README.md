@@ -71,9 +71,7 @@ Deny access to dangerous things:
                 "s3:PutBucketWebsite",
                 "s3:PutReplicationConfiguration"
             ],
-            "Resource": [
-                "arn:aws:s3:::bucketname"
-            ]
+            "Resource": "arn:aws:s3:::bucketname"
         },
         {
             "Effect": "Deny",
@@ -90,14 +88,10 @@ Deny access to dangerous things:
                 "s3:PutLifecycleConfiguration",
                 "s3:PutMetricsConfiguration"
             ],
-            "Resource": [
-                "arn:aws:s3:::bucketname"
-            ],
+            "Resource": "arn:aws:s3:::bucketname",
             "Condition": {
                 "StringNotLike": {
-                    "aws:userId": [
-                        "123456789012"
-                    ]
+                    "aws:userId": "123456789012"
                 }
             }
         },
@@ -113,14 +107,10 @@ Deny access to dangerous things:
                 "s3:PutObjectRetention",
                 "s3:PutObjectVersionAcl"
             ],
-            "Resource": [
-                "arn:aws:s3:::bucketname/*"
-            ],
+            "Resource": "arn:aws:s3:::bucketname/*",
             "Condition": {
                 "StringNotLike": {
-                    "aws:userId": [
-                        "123456789012"
-                    ]
+                    "aws:userId": "123456789012"
                 }
             }
         },
@@ -130,9 +120,7 @@ Deny access to dangerous things:
             "Action": [
                 "s3:*"
             ],
-            "Resource": [
-                "arn:aws:s3:::bucketname/*"
-            ],
+            "Resource": "arn:aws:s3:::bucketname/*",
             "Condition": {
                 "StringEquals": {
                     "s3:object-lock-mode": "COMPLIANCE"
