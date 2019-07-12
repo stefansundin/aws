@@ -130,6 +130,8 @@ Deny access to dangerous things:
         }
 ```
 
+VPC Endpoints for S3 are not used for cross-region requests, so `aws:sourceVpce` cannot be used in that case. Similarly, it appears that `aws:sourceVpc` does not work cross-region.
+
 ### Object Lock
 
 `--object-lock-retain-until-date` is given in this format: `2019-01-01T12:00:00.000Z`
