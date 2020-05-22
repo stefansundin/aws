@@ -80,7 +80,7 @@ Add awscli aliases. `cat ~/.aws/cli/alias`
 
 whoami = sts get-caller-identity
 version = --version
-upgrade = !aws version; eb --version; pip3 install -U --user awscli awsebcli
+upgrade = !aws --version; eb --version; pip3 install -U --user awscli awsebcli
 
 ecr-login =
   !f() {

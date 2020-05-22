@@ -45,7 +45,8 @@ kwargs = {
 
 if mfa_serial:
     kwargs["SerialNumber"] = mfa_serial
-    kwargs["TokenCode"] = raw_input("Enter MFA code: ")
+    kwargs["TokenCode"] = input("Enter MFA code: ")
+    print()
 
 sts = boto3.client("sts")
 role = sts.assume_role(**kwargs)
