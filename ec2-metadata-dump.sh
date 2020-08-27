@@ -5,14 +5,16 @@
 # curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -s user-data
 
 function get {
-  curl -fsS http://169.254.169.254/2018-09-24/$1 2> /dev/null
+  curl -fsS http://169.254.169.254/2019-10-01/$1 2> /dev/null
 }
 
 >&2 echo "Fetching metadata..."
 
 DOMAIN=$(get meta-data/services/domain)
 PARTITION=$(get meta-data/services/partition)
+REGION=$(get meta-data/placement/region)
 AZ=$(get meta-data/placement/availability-zone)
+AZ_ID=$(get meta-data/placement/availability-zone-id)
 INSTANCE_ID=$(get meta-data/instance-id)
 INSTANCE_TYPE=$(get meta-data/instance-type)
 PROFILE=$(get meta-data/profile)
@@ -45,7 +47,7 @@ EVENTS_SCHEDULED=$(get meta-data/events/maintenance/scheduled)
 
 echo "domain: $DOMAIN"
 echo "partition: $PARTITION"
-echo "availability-zone: $AZ"
+echo "availability-zone: $AZ ($AZ_ID)"
 echo "instance-id: $INSTANCE_ID"
 echo "instance-type: $INSTANCE_TYPE"
 echo "profile: $PROFILE"
@@ -101,4 +103,4 @@ for k in "$@"; do
 done
 
 echo
-echo "https://${AZ::-1}.console.aws.amazon.com/ec2/v2/home?region=${AZ::-1}#Instances:instanceId=$INSTANCE_ID;sort=instanceId"
+echo "https://$REGION.console.aws.amazon.com/ec2/v2/home?region=$REGION#Instances:instanceId=$INSTANCE_ID;sort=instanceId"

@@ -185,6 +185,14 @@ _=/usr/bin/env
 OLDPWD=/
 ```
 
+Get instance details without using the EC2 instance metadata service:
+```
+# instance id:
+cat /sys/devices/virtual/dmi/id/board_asset_tag
+# instance type:
+cat /sys/devices/virtual/dmi/id/product_name
+```
+
 ### Initialize EBS volume after restoring from snapshot
 
 https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-initialize.html
