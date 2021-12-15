@@ -4,8 +4,10 @@
 # Also print user-data:
 # curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -s user-data
 
+METADATA_TOKEN=$(curl -fsS -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 600" http://169.254.169.254/latest/api/token)
+
 function get {
-  curl -fsS http://169.254.169.254/2019-10-01/$1 2> /dev/null
+  curl -fsS -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/2019-10-01/$1 2> /dev/null
 }
 
 >&2 echo "Fetching metadata..."
