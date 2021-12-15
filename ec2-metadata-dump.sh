@@ -7,7 +7,7 @@
 METADATA_TOKEN=$(curl -fsS -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 600" http://169.254.169.254/latest/api/token)
 
 function get {
-  curl -fsS -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/2019-10-01/$1 2> /dev/null
+  curl -fsS -H "X-aws-ec2-metadata-token: $METADATA_TOKEN" http://169.254.169.254/2021-07-15/$1 2> /dev/null
 }
 
 >&2 echo "Fetching metadata..."
@@ -25,6 +25,7 @@ PUBLIC_KEY=$(get meta-data/public-keys/0/openssh-key)
 HOSTNAME=$(get meta-data/hostname)
 LOCAL_HOSTNAME=$(get meta-data/local-hostname)
 LOCAL_IPV4=$(get meta-data/local-ipv4)
+IPV6=$(get meta-data/ipv6)
 PUBLIC_HOSTNAME=$(get meta-data/public-hostname)
 if [ $? -eq 22 ]; then
   PUBLIC_HOSTNAME="N/A"
@@ -68,6 +69,7 @@ echo
 echo "hostname: $HOSTNAME"
 echo "local-hostname: $LOCAL_HOSTNAME"
 echo "local-ipv4: $LOCAL_IPV4"
+echo "ipv6: $IPV6"
 echo "public-hostname: $PUBLIC_HOSTNAME"
 echo "public-ipv4: $PUBLIC_IPV4"
 echo "mac: $MAC"
