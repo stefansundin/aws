@@ -170,6 +170,18 @@ It would be great if this could be done with a U2F device. At least you can enab
 
 ## EC2
 
+Special IP addresses:
+- IPv4:
+  - 169.254.169.254 - [Instance metadata service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html)
+    - 169.254.169.254 used to be accessible with the `instance-data` hostname, but this appears to no longer work. was this a /etc/hosts hack for amazon linux perhaps?
+  - 169.254.169.253 - [DNS](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_DHCP_Options.html#AmazonDNS)
+  - 169.254.169.123 - [Time server](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/set-time.html)
+- IPv6:
+  - fd00:ec2::254
+    - Requires that the metadata option `HttpProtocolIpv6` is enabled.
+  - fd00:ec2::253
+  - fd00:ec2::123
+
 Change EBS "Delete on Termination" flag after launching instance:
 ```
 aws ec2 modify-instance-attribute --instance-id i-01234567890abcdef --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs":{"DeleteOnTermination":false}}]'
