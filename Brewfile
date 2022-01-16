@@ -1,5 +1,5 @@
 # brew bundle
-# pip install -U awsebcli
+# pip3 install -U awsebcli
 # AWS will not publish awscli v2 to PyPI - https://github.com/aws/aws-cli/issues/4947
 
 tap 'aws/tap'
