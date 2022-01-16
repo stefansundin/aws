@@ -12,8 +12,8 @@ brew 'ec2-instance-selector'
 # my stuff:
 brew 'aws-rotate-key'
 
-# old version of node (Lambda@Edge supports v12)
-brew 'node@12'
+# old version of node (Lambda@Edge is not up to date, see https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-functions-restrictions.html#lambda-at-edge-function-restrictions)
+brew 'node@14'
 
 # HashiCorp
 brew 'packer'
