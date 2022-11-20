@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# https://github.com/stefansundin/aws/blob/master/cli/federate.py
+# https://github.com/stefansundin/aws/blob/main/cli/federate.py
 
 # This script lets you assume a role in the AWS console with a session duration
 # that is longer than one hour (max 12 hours).

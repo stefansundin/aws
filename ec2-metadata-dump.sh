@@ -1,8 +1,8 @@
 #!/bin/bash
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
-# curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/main/ec2-metadata-dump.sh | bash
 # Also print user-data:
-# curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/master/ec2-metadata-dump.sh | bash -s user-data
+# curl -fsSL https://raw.githubusercontent.com/stefansundin/aws/main/ec2-metadata-dump.sh | bash -s user-data
 
 METADATA_TOKEN=$(curl -fsS -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 600" http://169.254.169.254/latest/api/token)
 
