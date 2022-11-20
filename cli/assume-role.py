@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # This script lets you easily assume a role in your terminal.
 
 import sys, os, boto3
@@ -45,8 +45,9 @@ kwargs = {
 
 if mfa_serial:
     kwargs["SerialNumber"] = mfa_serial
-    kwargs["TokenCode"] = input("Enter MFA code: ")
-    print()
+    sys.stderr.write("Enter MFA code: ")
+    kwargs["TokenCode"] = input()
+    sys.stderr.write("\n")
 
 sts = boto3.client("sts")
 role = sts.assume_role(**kwargs)
@@ -59,7 +60,7 @@ if sys.stdout.isatty():
     sys.stderr.write("\n")
 
 sys.stderr.write("Assumed role: "+role["AssumedRoleUser"]["Arn"]+"\n")
-sys.stderr.write("Expires at "+str(role["Credentials"]["Expiration"])+"\n")
+sys.stderr.write("Expires at "+str(role["Credentials"]["Expiration"].astimezone())+"\n")
 sys.stderr.write("\n")
 
 if sys.stdout.isatty():
