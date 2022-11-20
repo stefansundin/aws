@@ -320,14 +320,14 @@ rds-wait-for-instance =
         continue
       fi
       state=$(echo $data | jq -Mr .DBInstanceStatus)
-      master_id=$(echo $data | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
-      if [ "$master_id" != "null" ]; then
+      sourcedb=$(echo $data | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
+      if [ "$sourcedb" != "null" ]; then
         lag=$(aws cloudwatch get-metric-statistics --namespace AWS/RDS --dimensions Name=DBInstanceIdentifier,Value=$db --metric-name ReplicaLag --start-time $(date -v-3M -u +%FT%TZ) --end-time $(date -v+3M -u +%FT%TZ) --period 60 --statistics Average | jq -M '.Datapoints | sort_by(.Timestamp) | reverse[0].Average')
         state="$state (ReplicaLag: $lag seconds)"
         if [[ "$state" != "available"* ]]; then
-          snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$master_id" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%") | join(", ")')
+          snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$sourcedb" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%") | join(", ")')
           if [ "$snaps" != "" ]; then
-            state="$state ($master_id snapshot progress: $snaps)"
+            state="$state ($sourcedb snapshot progress: $snaps)"
           fi
         fi
       fi
@@ -425,11 +425,11 @@ rds-watch-instance-status =
       data=$(aws rds describe-db-instances --db-instance-identifier "$db" --query DBInstances[0] 2>/dev/null)
       if [ $? == 0 ]; then
         state=$(echo "$data" | jq -Mr .DBInstanceStatus)
-        master_id=$(echo "$data" | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
-        if [ "$master_id" != "null" ]; then
-          snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$master_id" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%") | join(", ")')
+        sourcedb=$(echo "$data" | jq -Mr .ReadReplicaSourceDBInstanceIdentifier)
+        if [ "$sourcedb" != "null" ]; then
+          snaps=$(aws rds describe-db-snapshots --db-instance-identifier "$sourcedb" | jq -Mr '.DBSnapshots | map(select(.Status != "available")) | map(.Status+" "+(.PercentProgress|tostring)+"%") | join(", ")')
           if [ "$snaps" != "" ]; then
-            state="$state (master snapshot progress: $snaps)"
+            state="$state ($sourcedb snapshot progress: $snaps)"
           fi
         fi
       else
